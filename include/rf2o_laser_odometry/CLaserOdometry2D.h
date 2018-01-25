@@ -76,6 +76,7 @@ public:
 protected:
     ros::NodeHandle             n;
     sensor_msgs::LaserScan      last_scan;
+    sensor_msgs::LaserScan      benchmark_scan_;
     bool                        module_initialized,first_laser_scan,new_scan_available, GT_pose_initialized, verbose;
     tf::TransformListener       tf_listener;          //Do not put inside the callback
     tf::TransformBroadcaster    odom_broadcaster;
@@ -83,7 +84,7 @@ protected:
 
     //Subscriptions & Publishers
     ros::Subscriber laser_sub, initPose_sub;
-    ros::Publisher odom_pub;
+    ros::Publisher odom_pub, interp_scan_pub_;
 
     //CallBacks
     void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& new_scan);
@@ -121,7 +122,6 @@ protected:
 	float fps;								//In Hz
 	float fovh;								//Horizontal FOV
   std::vector<float> range_angles_;
-  sensor_msgs::LaserScan benchmark_scan_;
 
   unsigned int cols;
 	unsigned int cols_i;
