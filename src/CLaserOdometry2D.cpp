@@ -86,6 +86,45 @@ bool CLaserOdometry2D::scan_available()
     return new_scan_available;
 }
 
+void CLaserOdometry2D:: interpolateScanToFixedAngles(
+    const sensor_msgs::LaserScan::ConstPtr& new_scan,
+    sensor_msgs::LaserScan& interpolated_scan) {
+
+  interpolated_scan.angle_min = benchmark_scan_.angle_min;
+  interpolated_scan.angle_max = benchmark_scan_.angle_max;
+  interpolated_scan.angle_increment = benchmark_scan_.angle_increment;
+  interpolated_scan.time_increment = new_scan->time_increment;
+  interpolated_scan.header = new_scan->header;
+  interpolated_scan.scan_time = new_scan->scan_time;
+  interpolated_scan.range_min = new_scan->range_min;
+  interpolated_scan.range_max = new_scan->range_max;
+  interpolated_scan.ranges.resize(0.0, benchmark_scan_.ranges.size());
+
+  float current_scan_angle = new_scan->angle_min;
+  int current_scan_range_idx = 0;
+
+  int lower_bound_idx = 0;
+  int upper_bound_idx = 1;
+  float lower_benchmark_angle = range_angles_[lower_bound_idx];
+  for(lower_bound_idx; lower_bound_idx < range_angles_.size()-1; lower_bound_idx++) {
+    upper_bound_idx = lower_bound_idx + 1;
+    if(current_scan_angle >= lower_bound_idx && current_scan_angle <= upper_bound_idx) {
+      float alpha = (current_scan_angle - range_angles_[lower_bound_idx]) / benchmark_scan_.angle_increment;
+      if(alpha < 0.5) {  // initial stab at rounding....TODO: interpolate?
+        interpolated_scan.ranges[lower_bound_idx] = (new_scan->ranges)[current_scan_range_idx];
+      } else {
+        interpolated_scan.ranges[upper_bound_idx] = (new_scan->ranges)[current_scan_range_idx];
+      }
+    }
+    current_scan_range_idx += 1;
+    current_scan_angle += new_scan->angle_increment;
+    if(current_scan_range_idx >= new_scan->ranges.size()) {
+      break;
+    }
+  }
+
+}
+
 void CLaserOdometry2D::Init()
 {
     //Got an initial scan laser, obtain its parametes
@@ -98,13 +137,18 @@ void CLaserOdometry2D::Init()
     iter_irls = 5;                      //Num iterations to solve iterative reweighted least squares
 
     // Interpolate to these angles from now on.
-    range_angles.clear();
-    range_angles.push_back(last_scan.angle_min);
+    range_angles_.clear();
+    range_angles_.push_back(last_scan.angle_min);
     float next_angle = last_scan.angle_min + last_scan.angle_increment;
     while(next_angle <= last_scan.angle_max) {
-      range_angles.push_back(next_angle);
+      range_angles_.push_back(next_angle);
       next_angle += last_scan.angle_increment;
     }
+
+    benchmark_scan_ = last_scan;
+
+    ROS_INFO("Field of view : %f; angle_min : %f, angle_max: %f, scan width : %i",
+      fovh, last_scan.angle_min, last_scan.angle_max, (int) range_angles_.size());
 
     //Set laser pose on the robot (through tF)
     // This allow estimation of the odometry with respect to the robot base reference system.
@@ -319,7 +363,7 @@ void CLaserOdometry2D::createImagePyramid()
     unsigned int s = pow(2.f,int(i));
     cols_i = ceil(float(width)/float(s));
 
-	    const unsigned int i_1 = i-1;
+    const unsigned int i_1 = i-1;
 
 	  // First level -> Filter (not downsampling);
     if (i == 0) {
@@ -1043,8 +1087,11 @@ void CLaserOdometry2D::LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& new
         {
             //copy laser scan to internal variable
             ROS_INFO("new scan has size : %i", (int) new_scan->ranges.size());
+            sensor_msgs::LaserScan interpolated_scan;
+            interpolateScanToFixedAngles(new_scan, interpolated_scan);
+
             for (unsigned int i = 0; i<width; i++)
-                range_wf(i) = new_scan->ranges[i];
+                range_wf(i) = interpolated_scan.ranges[i];
             new_scan_available = true;
         }
     }

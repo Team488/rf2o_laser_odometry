@@ -120,8 +120,10 @@ protected:
     //std::string LaserVarName;				//Name of the topic containing the scan lasers \laser_scan
 	float fps;								//In Hz
 	float fovh;								//Horizontal FOV
-  std::vector<float> range_angles;
-	unsigned int cols;
+  std::vector<float> range_angles_;
+  sensor_msgs::LaserScan benchmark_scan_;
+
+  unsigned int cols;
 	unsigned int cols_i;
 	unsigned int width;
 	unsigned int ctf_levels;
@@ -150,7 +152,9 @@ protected:
 
 
 	// Methods
-  void interpolateToFixedAngles();
+  void interpolateScanToFixedAngles(
+    const sensor_msgs::LaserScan::ConstPtr& new_scan,
+    sensor_msgs::LaserScan& interpolated_scan);
 	void createImagePyramid();
 	void calculateCoord();
 	void performWarping();
