@@ -103,7 +103,7 @@ protected:
 	std::vector<Eigen::MatrixXf> yy_old;
 	std::vector<Eigen::MatrixXf> yy_warped;
 	std::vector<Eigen::MatrixXf> transformations;
-	
+
 	Eigen::MatrixXf range_wf;
 	Eigen::MatrixXf dtita;
 	Eigen::MatrixXf dt;
@@ -117,11 +117,10 @@ protected:
 	Eigen::Matrix<float, 3, 1> Var;	//3 unknowns: vx, vy, w
 	Eigen::Matrix<float, 3, 3> cov_odo;
 
-
-
     //std::string LaserVarName;				//Name of the topic containing the scan lasers \laser_scan
 	float fps;								//In Hz
 	float fovh;								//Horizontal FOV
+  std::vector<float> range_angles;
 	unsigned int cols;
 	unsigned int cols_i;
 	unsigned int width;
@@ -151,11 +150,12 @@ protected:
 
 
 	// Methods
+  void interpolateToFixedAngles();
 	void createImagePyramid();
 	void calculateCoord();
 	void performWarping();
 	void calculaterangeDerivativesSurface();
-	void computeNormals();	
+	void computeNormals();
 	void computeWeights();
 	void findNullPoints();
 	void solveSystemOneLevel();
