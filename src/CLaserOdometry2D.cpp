@@ -104,9 +104,9 @@ void CLaserOdometry2D:: interpolateScanToFixedAngles(
   interpolated_scan.range_min = new_scan->range_min;
   interpolated_scan.range_max = new_scan->range_max;
 
-  ROS_INFO("mapping %i ranges [%f, %f] to %i ranges [%f, %f]",
-    (int) (new_scan->ranges).size(), new_scan->angle_min, new_scan->angle_max,
-    (int) benchmark_scan_.ranges.size(), benchmark_scan_.angle_min, benchmark_scan_.angle_max);
+  // ROS_INFO("mapping %i ranges [%f, %f] to %i ranges [%f, %f]",
+  //   (int) (new_scan->ranges).size(), new_scan->angle_min, new_scan->angle_max,
+  //   (int) benchmark_scan_.ranges.size(), benchmark_scan_.angle_min, benchmark_scan_.angle_max);
 
   float current_scan_angle = new_scan->angle_min;
   int current_scan_range_idx = 0;
@@ -117,17 +117,15 @@ void CLaserOdometry2D:: interpolateScanToFixedAngles(
     current_scan_range_idx += 1;
   }
 
-  ROS_INFO("Starting at scan angle : %f = range index %i", current_scan_angle, current_scan_range_idx);
-  ROS_INFO("Parsing to range : [%f, %f]", range_angles_[0], range_angles_[range_angles_.size()-1]);
+  // ROS_INFO("Starting at scan angle : %f = range index %i", current_scan_angle, current_scan_range_idx);
+  // ROS_INFO("Parsing to range : [%f, %f]", range_angles_[0], range_angles_[range_angles_.size()-1]);
 
   int lower_bound_idx = 0;
   int upper_bound_idx = 1;
   float lower_bound_angle, upper_bound_angle;
 
-  std::vector<float> range_backward_interp(benchmark_scan_.ranges.size(), 0.0);
-  std::vector<float> range_forward_interp(benchmark_scan_.ranges.size(), 0.0);
-
   for(current_scan_range_idx; current_scan_range_idx < (new_scan->ranges).size(); current_scan_range_idx++) {
+
     current_scan_angle = new_scan->angle_min + current_scan_range_idx * (new_scan->angle_increment);
 
     upper_bound_idx = 1; // necessary?
@@ -148,26 +146,27 @@ void CLaserOdometry2D:: interpolateScanToFixedAngles(
     lower_bound_angle = range_angles_[upper_bound_idx-1];
     upper_bound_angle = range_angles_[upper_bound_idx];
 
-    int s, sm1, sp1;
+    int s, sm1;
     s = current_scan_range_idx;
     sm1 = s - 1;
-    sp1 = s + 1;
 
     if(sm1 < 0) {
       sm1 = new_scan->ranges.size()-1;
     }
-    float alpha_m1 = (lower_bound_angle - (current_scan_angle - new_scan->angle_increment)) / new_scan->angle_increment;
-    range_backward_interp[lower_bound_angle] = new_scan->ranges[sm1] + (new_scan->ranges[s] - new_scan->ranges[sm1]) * alpha_m1;
 
-    if(sp1 > new_scan->ranges.size()-1){
-      sp1 = 0;
+    if(current_scan_angle >= lower_bound_angle && current_scan_angle < upper_bound_angle) {
+      float alpha_m1 = (lower_bound_angle - (current_scan_angle - new_scan->angle_increment)) / new_scan->angle_increment;
+      float range_delta = new_scan->ranges[s] - new_scan->ranges[sm1];
+      if(range_delta < 0.1) {
+        interpolated_scan.ranges[upper_bound_idx-1] = new_scan->ranges[sm1] + range_delta * alpha_m1;
+      } else {
+        if(std::abs(lower_bound_angle - current_scan_angle) < 0.017) {
+          interpolated_scan.ranges[upper_bound_idx-1] = new_scan->ranges[s];
+        }
+      }
+      // ROS_INFO("alpha : %f, idx : %i", alpha_m1, (int) upper_bound_idx - 1);
     }
-    float alpha_p1 = (upper_bound_angle - current_scan_angle) / new_scan->angle_increment;
-    range_forward_interp[upper_bound_angle] = new_scan->ranges[s] + (new_scan->ranges[sp1] - new_scan->ranges[s]) * alpha_p1;
 
-    for(int ii=0; ii<range_forward_interp.size(); ii++) {
-      interpolated_scan.ranges[ii] = (range_forward_interp[ii] + range_backward_interp[ii]) * 0.5;
-    }
 
     // if(current_scan_angle >= lower_bound_angle && current_scan_angle < upper_bound_angle) {
     //   float alpha = (current_scan_angle - lower_bound_angle) / benchmark_scan_.angle_increment;
@@ -224,6 +223,7 @@ void CLaserOdometry2D::Init()
     {
         ROS_ERROR("%s",ex.what());
         ros::Duration(1.0).sleep();
+        return;
     }
 
     //TF:transform -> mrpt::CPose3D (see mrpt-ros-bridge)
@@ -1000,6 +1000,7 @@ void CLaserOdometry2D::PoseUpdate()
 	//cout << endl << "Arc cos (incr tita): " << kai_loc(2);
 
 	float phi = laser_pose.yaw();
+  ROS_INFO("Laser pose yaw : %f", phi);
 
 	kai_abs(0) = kai_loc(0)*cos(phi) - kai_loc(1)*sin(phi);
 	kai_abs(1) = kai_loc(0)*sin(phi) + kai_loc(1)*cos(phi);
@@ -1011,13 +1012,15 @@ void CLaserOdometry2D::PoseUpdate()
 	laser_oldpose = laser_pose;
 	math::CMatrixDouble33 aux_acu = acu_trans;
 	poses::CPose2D pose_aux_2D(acu_trans(0,2), acu_trans(1,2), kai_loc(2)/fps);
-        laser_pose = laser_pose + CPose3D(pose_aux_2D);
+  laser_pose = laser_pose + CPose3D(pose_aux_2D);
 
 
 
 	//				Compute kai_loc_old
 	//-------------------------------------------------------
 	phi = laser_pose.yaw();
+  ROS_INFO("Laser pose yaw for old calcs : %f", phi);
+
 	kai_loc_old(0) = kai_abs(0)*cos(phi) + kai_abs(1)*sin(phi);
 	kai_loc_old(1) = -kai_abs(0)*sin(phi) + kai_abs(1)*cos(phi);
 	kai_loc_old(2) = kai_abs(2);
@@ -1098,8 +1101,8 @@ void CLaserOdometry2D::PoseUpdate()
         odom_trans.header.stamp = ros::Time::now();
         odom_trans.header.frame_id = odom_frame_id;
         odom_trans.child_frame_id = base_frame_id;
-        odom_trans.transform.translation.x = robot_pose.x();
-        odom_trans.transform.translation.y = robot_pose.y();
+        odom_trans.transform.translation.x = -robot_pose.x();
+        odom_trans.transform.translation.y = -robot_pose.y();
         odom_trans.transform.translation.z = 0.0;
         odom_trans.transform.rotation = tf::createQuaternionMsgFromYaw(robot_pose.yaw());
         //send the transform
@@ -1113,8 +1116,8 @@ void CLaserOdometry2D::PoseUpdate()
     odom.header.stamp = ros::Time::now();
     odom.header.frame_id = odom_frame_id;
     //set the position
-    odom.pose.pose.position.x = robot_pose.x();
-    odom.pose.pose.position.y = robot_pose.y();
+    odom.pose.pose.position.x = -robot_pose.x();
+    odom.pose.pose.position.y = -robot_pose.y();
     odom.pose.pose.position.z = 0.0;
     odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(robot_pose.yaw());
     //set the velocity
