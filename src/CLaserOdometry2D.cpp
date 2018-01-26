@@ -157,7 +157,7 @@ void CLaserOdometry2D:: interpolateScanToFixedAngles(
     if(current_scan_angle >= lower_bound_angle && current_scan_angle < upper_bound_angle) {
       float alpha_m1 = (lower_bound_angle - (current_scan_angle - new_scan->angle_increment)) / new_scan->angle_increment;
       float range_delta = new_scan->ranges[s] - new_scan->ranges[sm1];
-      if(range_delta < 0.1) {
+      if(std::abs(range_delta) < 0.1) {
         interpolated_scan.ranges[upper_bound_idx-1] = new_scan->ranges[sm1] + range_delta * alpha_m1;
       } else {
         if(std::abs(lower_bound_angle - current_scan_angle) < 0.017) {
@@ -1067,7 +1067,8 @@ void CLaserOdometry2D::PoseUpdate()
     //-------------------------------------------------------------------------------------
     double time_inc_sec = (last_scan.header.stamp - last_odom_time).toSec();
     last_odom_time = last_scan.header.stamp;
-    double lin_speed = acu_trans(0,2) / time_inc_sec;
+    double lin_speed_x = acu_trans(0,2) / time_inc_sec;
+    double lin_speed_y = acu_trans(1, 2) / time_inc_sec;
     //double lin_speed = sqrt( square(robot_oldpose.x()-robot_pose.x()) + square(robot_oldpose.y()-robot_pose.y()) )/time_inc_sec;
     double ang_inc = robot_pose.yaw() - robot_oldpose.yaw();
     if (ang_inc > 3.14159)
@@ -1122,8 +1123,8 @@ void CLaserOdometry2D::PoseUpdate()
     odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(robot_pose.yaw());
     //set the velocity
     odom.child_frame_id = base_frame_id;
-    odom.twist.twist.linear.x = lin_speed;    //linear speed
-    odom.twist.twist.linear.y = 0.0;
+    odom.twist.twist.linear.x = lin_speed_x;    //linear speed
+    odom.twist.twist.linear.y = lin_speed_y;
     odom.twist.twist.angular.z = ang_speed;   //angular speed
     //publish the message
     odom_pub.publish(odom);
