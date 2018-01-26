@@ -1000,7 +1000,7 @@ void CLaserOdometry2D::PoseUpdate()
 	//cout << endl << "Arc cos (incr tita): " << kai_loc(2);
 
 	float phi = laser_pose.yaw();
-  ROS_INFO("Laser pose yaw : %f", phi);
+  // ROS_INFO("Laser pose yaw : %f", phi);
 
 	kai_abs(0) = kai_loc(0)*cos(phi) - kai_loc(1)*sin(phi);
 	kai_abs(1) = kai_loc(0)*sin(phi) + kai_loc(1)*cos(phi);
@@ -1019,7 +1019,7 @@ void CLaserOdometry2D::PoseUpdate()
 	//				Compute kai_loc_old
 	//-------------------------------------------------------
 	phi = laser_pose.yaw();
-  ROS_INFO("Laser pose yaw for old calcs : %f", phi);
+  // ROS_INFO("Laser pose yaw for old calcs : %f", phi);
 
 	kai_loc_old(0) = kai_abs(0)*cos(phi) + kai_abs(1)*sin(phi);
 	kai_loc_old(1) = -kai_abs(0)*sin(phi) + kai_abs(1)*cos(phi);
@@ -1154,7 +1154,7 @@ void CLaserOdometry2D::LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& new
         else
         {
             //copy laser scan to internal variable
-            ROS_INFO("new scan has size : %i", (int) new_scan->ranges.size());
+            // ROS_INFO("new scan has size : %i", (int) new_scan->ranges.size());
             if(new_scan->ranges.size() < 80) {
               return;
             }
