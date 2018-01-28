@@ -22,6 +22,7 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/Twist.h>
+#include <angles/angles.h>
 
 // MRPT related headers
 #include <mrpt/version.h>
@@ -52,6 +53,7 @@
 #include <iostream>
 #include <fstream>
 #include <numeric>
+#include <cmath>
 
 
 
@@ -85,6 +87,9 @@ protected:
     //Subscriptions & Publishers
     ros::Subscriber laser_sub, initPose_sub;
     ros::Publisher odom_pub, interp_scan_pub_;
+
+    double max_angular_speed_;
+    double max_linear_speed_;
 
     //CallBacks
     void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& new_scan);
@@ -122,6 +127,8 @@ protected:
 	float fps;								//In Hz
 	float fovh;								//Horizontal FOV
   std::vector<float> range_angles_;
+
+  double angular_cov_mult_;
 
   unsigned int cols;
 	unsigned int cols_i;

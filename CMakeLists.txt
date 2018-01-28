@@ -5,13 +5,14 @@ set (CMAKE_CXX_STANDARD 14)  # Require C++14
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS  
+find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   nav_msgs
   sensor_msgs
   std_msgs
-  tf  
+  tf
+  angles  
 )
 
 ## System dependencies are found with CMake's conventions

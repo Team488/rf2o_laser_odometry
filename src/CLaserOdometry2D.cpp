@@ -42,6 +42,10 @@ CLaserOdometry2D::CLaserOdometry2D()
     pn.param<double>("freq",freq,10.0);
     pn.param<bool>("verbose", verbose, true);
 
+    pn.param<double>("angular_cov_mult", angular_cov_mult_, 10);
+    pn.param<double>("max_angular_speed_", max_angular_speed_, 1.0);
+    pn.param<double>("max_linear_speed_", max_linear_speed_, 1.0);
+
     //Publishers and Subscribers
     //--------------------------
     odom_pub = pn.advertise<nav_msgs::Odometry>(odom_topic, 5);
@@ -1070,13 +1074,20 @@ void CLaserOdometry2D::PoseUpdate()
     double lin_speed_x = acu_trans(0,2) / time_inc_sec;
     double lin_speed_y = acu_trans(1, 2) / time_inc_sec;
     //double lin_speed = sqrt( square(robot_oldpose.x()-robot_pose.x()) + square(robot_oldpose.y()-robot_pose.y()) )/time_inc_sec;
-    double ang_inc = robot_pose.yaw() - robot_oldpose.yaw();
-    if (ang_inc > 3.14159)
-        ang_inc -= 2*3.14159;
-    if (ang_inc < -3.14159)
-        ang_inc += 2*3.14159;
+    double ang_inc = angles::shortest_angular_distance(
+      angles::normalize_angle_positive(robot_oldpose.yaw()),
+      angles::normalize_angle_positive(robot_pose.yaw()));
+
+    // robot_pose.yaw() - robot_oldpose.yaw();
+    // if (ang_inc > 3.14159)
+    //     ang_inc -= 2*3.14159;
+    // if (ang_inc < -3.14159)
+    //     ang_inc += 2*3.14159;
     double ang_speed = ang_inc/time_inc_sec;
     robot_oldpose = robot_pose;
+
+    bool odom_ok = std::abs(ang_speed) <= max_angular_speed_
+      && hypot(lin_speed_x, lin_speed_y) <= max_linear_speed_;
 
     //filter speeds
     /*
@@ -1127,6 +1138,14 @@ void CLaserOdometry2D::PoseUpdate()
     odom.twist.twist.linear.y = lin_speed_y;
     odom.twist.twist.angular.z = ang_speed;   //angular speed
     //publish the message
+    odom.twist.covariance[0] = std::isnan(cov_odo(0, 0)) ? 0.0001 : cov_odo(0, 0);
+    odom.twist.covariance[1] = std::isnan(cov_odo(0, 1)) ? 0.0001 : cov_odo(0, 1);
+    odom.twist.covariance[6] = std::isnan(cov_odo(1, 0)) ? 0.0001 : cov_odo(1, 0);
+    odom.twist.covariance[7] = std::isnan(cov_odo(1, 1)) ? 0.0001 : cov_odo(1, 1);
+    odom.twist.covariance[14] = 1e-6;
+    odom.twist.covariance[21] = 1e-6;
+    odom.twist.covariance[28] = 1e-6;
+    odom.twist.covariance[35] = std::isnan(cov_odo(2, 2)) ? 0.01 : cov_odo(2, 2) * angular_cov_mult_;
     odom_pub.publish(odom);
 }
 
@@ -1205,9 +1224,9 @@ int main(int argc, char** argv)
         }
         else
         {
-            ROS_WARN("[rf2o] Waiting for laser_scans.... odom init: %s, scan available : %s",
-              myLaserOdom.is_initialized() ? "true" : "false",
-              myLaserOdom.scan_available() ? "true" : "false") ;
+            // ROS_WARN("[rf2o] Waiting for laser_scans.... odom init: %s, scan available : %s",
+            //   myLaserOdom.is_initialized() ? "true" : "false",
+            //   myLaserOdom.scan_available() ? "true" : "false") ;
         }
 
         loop_rate.sleep();
