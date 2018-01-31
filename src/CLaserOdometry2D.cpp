@@ -45,12 +45,16 @@ CLaserOdometry2D::CLaserOdometry2D()
     pn.param<double>("angular_cov_mult", angular_cov_mult_, 10);
     pn.param<double>("max_angular_speed_", max_angular_speed_, 1.0);
     pn.param<double>("max_linear_speed_", max_linear_speed_, 1.0);
+    pn.param<float>("min_info_density", min_info_density_, 0.5f);
 
     //Publishers and Subscribers
     //--------------------------
     odom_pub = pn.advertise<nav_msgs::Odometry>(odom_topic, 5);
     interp_scan_pub_ = pn.advertise<sensor_msgs::LaserScan>("/interpolated_scan", 2);
     laser_sub = n.subscribe<sensor_msgs::LaserScan>(laser_scan_topic,1,&CLaserOdometry2D::LaserCallBack,this);
+
+    occ_hist_sub_ = n.subscribe<maidbot_edge_detector::OccupancyHistogram>("/unfiltered_occupancy",
+      1, &CLaserOdometry2D::occHistCb, this);
 
     //init pose??
     if (init_pose_from_topic != "")
@@ -91,7 +95,11 @@ bool CLaserOdometry2D::scan_available()
     return new_scan_available;
 }
 
-void CLaserOdometry2D:: interpolateScanToFixedAngles(
+void CLaserOdometry2D::occHistCb(const maidbot_edge_detector::OccupancyHistogram::ConstPtr& msg) {
+  occ_hist_ = *msg;
+}
+
+void CLaserOdometry2D::interpolateScanToFixedAngles(
     const sensor_msgs::LaserScan::ConstPtr& new_scan,
     sensor_msgs::LaserScan& interpolated_scan) {
 
@@ -1138,18 +1146,32 @@ void CLaserOdometry2D::PoseUpdate()
     odom.twist.twist.linear.y = lin_speed_y;
     odom.twist.twist.angular.z = ang_speed;   //angular speed
     //publish the message
-    odom.twist.covariance[0] = std::isnan(cov_odo(0, 0)) ? 0.0001 : cov_odo(0, 0);
-    odom.twist.covariance[1] = std::isnan(cov_odo(0, 1)) ? 0.0001 : cov_odo(0, 1);
-    odom.twist.covariance[6] = std::isnan(cov_odo(1, 0)) ? 0.0001 : cov_odo(1, 0);
-    odom.twist.covariance[7] = std::isnan(cov_odo(1, 1)) ? 0.0001 : cov_odo(1, 1);
-    odom.twist.covariance[14] = 1e-6;
-    odom.twist.covariance[21] = 1e-6;
-    odom.twist.covariance[28] = 1e-6;
-    odom.twist.covariance[35] = std::isnan(cov_odo(2, 2)) ? 0.01 : cov_odo(2, 2) * angular_cov_mult_;
+
+    setOdomCovariances(odom);
     odom_pub.publish(odom);
 }
 
+void CLaserOdometry2D::setOdomCovariances(nav_msgs::Odometry& odom) {
+  // xx
+  float sigma_x = 0.01;
+  float sigma_y = 0.01;
+  if(occ_hist_.information_density.x < min_info_density_) {
+    sigma_x = 0.05 * (1.0 / (occ_hist_.information_density.x + 0.1));
+  }
+  if(occ_hist_.information_density.x < min_info_density_) {
+    sigma_y = 0.05 * (1.0 / (occ_hist_.information_density.y + 0.1));
+  }
 
+  odom.twist.covariance[0] = sigma_x * sigma_x;
+  odom.twist.covariance[1] = sigma_x * sigma_y;
+  odom.twist.covariance[6] = sigma_x * sigma_y;
+  odom.twist.covariance[7] = sigma_y * sigma_y;
+  odom.twist.covariance[14] = 1e-6;
+  odom.twist.covariance[21] = 1e-6;
+  odom.twist.covariance[28] = 1e-6;
+  // dubious.
+  odom.twist.covariance[35] = std::min(sigma_x*sigma_x, sigma_y*sigma_y) * angular_cov_mult_;
+}
 
 //-----------------------------------------------------------------------------------
 //                                   CALLBACKS

@@ -23,6 +23,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/Twist.h>
 #include <angles/angles.h>
+#include <maidbot_edge_detector/OccupancyHistogram.h>
 
 // MRPT related headers
 #include <mrpt/version.h>
@@ -55,8 +56,6 @@
 #include <numeric>
 #include <cmath>
 
-
-
 class CLaserOdometry2D
 {
 public:
@@ -85,15 +84,22 @@ protected:
     nav_msgs::Odometry          initial_robot_pose;
 
     //Subscriptions & Publishers
-    ros::Subscriber laser_sub, initPose_sub;
+    ros::Subscriber laser_sub, initPose_sub, occ_hist_sub_;
     ros::Publisher odom_pub, interp_scan_pub_;
 
     double max_angular_speed_;
     double max_linear_speed_;
+    double angular_cov_mult_;
 
     //CallBacks
     void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& new_scan);
     void initPoseCallBack(const nav_msgs::Odometry::ConstPtr& new_initPose);
+
+    void occHistCb(const maidbot_edge_detector::OccupancyHistogram::ConstPtr& msg);
+    void setOdomCovariances(nav_msgs::Odometry& odom);
+    maidbot_edge_detector::OccupancyHistogram occ_hist_;
+
+    float min_info_density_;
 
     // Internal Data
 	std::vector<Eigen::MatrixXf> range;
@@ -127,8 +133,6 @@ protected:
 	float fps;								//In Hz
 	float fovh;								//Horizontal FOV
   std::vector<float> range_angles_;
-
-  double angular_cov_mult_;
 
   unsigned int cols;
 	unsigned int cols_i;
