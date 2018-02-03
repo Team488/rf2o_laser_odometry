@@ -53,7 +53,7 @@ CLaserOdometry2D::CLaserOdometry2D()
     interp_scan_pub_ = pn.advertise<sensor_msgs::LaserScan>("/interpolated_scan", 2);
     laser_sub = n.subscribe<sensor_msgs::LaserScan>(laser_scan_topic,1,&CLaserOdometry2D::LaserCallBack,this);
 
-    occ_hist_sub_ = n.subscribe<maidbot_edge_detector::OccupancyHistogram>("/unfiltered_occupancy",
+    occ_hist_sub_ = n.subscribe<maidbot_edge_detector::OccupancyHistogram>("/long_range_unfiltered_occupancy",
       1, &CLaserOdometry2D::occHistCb, this);
 
     //init pose??
@@ -1021,7 +1021,6 @@ void CLaserOdometry2D::PoseUpdate()
 
 	//						Update poses
 	//-------------------------------------------------------
-	laser_oldpose = laser_pose;
 	math::CMatrixDouble33 aux_acu = acu_trans;
 	poses::CPose2D pose_aux_2D(acu_trans(0,2), acu_trans(1,2), kai_loc(2)/fps);
   laser_pose = laser_pose + CPose3D(pose_aux_2D);
@@ -1078,24 +1077,67 @@ void CLaserOdometry2D::PoseUpdate()
     // last_odom_time -> The time of the previous scan lasser used to estimate the pose
     //-------------------------------------------------------------------------------------
     double time_inc_sec = (last_scan.header.stamp - last_odom_time).toSec();
-    last_odom_time = last_scan.header.stamp;
     double lin_speed_x = acu_trans(0,2) / time_inc_sec;
     double lin_speed_y = acu_trans(1, 2) / time_inc_sec;
-    //double lin_speed = sqrt( square(robot_oldpose.x()-robot_pose.x()) + square(robot_oldpose.y()-robot_pose.y()) )/time_inc_sec;
+
     double ang_inc = angles::shortest_angular_distance(
       angles::normalize_angle_positive(robot_oldpose.yaw()),
       angles::normalize_angle_positive(robot_pose.yaw()));
+
+    double ang_speed = ang_inc/time_inc_sec;
+
+    // TODO -- replace this heuristic; check matrix condition
+    bool odom_ok = std::abs(ang_speed) <= max_angular_speed_
+      && hypot(lin_speed_x, lin_speed_y) <= max_linear_speed_;
 
     // robot_pose.yaw() - robot_oldpose.yaw();
     // if (ang_inc > 3.14159)
     //     ang_inc -= 2*3.14159;
     // if (ang_inc < -3.14159)
     //     ang_inc += 2*3.14159;
-    double ang_speed = ang_inc/time_inc_sec;
-    robot_oldpose = robot_pose;
+    if(odom_ok) {
+      laser_oldpose = laser_pose;
+      robot_oldpose = robot_pose;
+      last_odom_time = last_scan.header.stamp;
 
-    bool odom_ok = std::abs(ang_speed) <= max_angular_speed_
-      && hypot(lin_speed_x, lin_speed_y) <= max_linear_speed_;
+      if (publish_tf)
+      {
+          //ROS_INFO("[rf2o] Publishing TF: [base_link] to [odom]");
+          geometry_msgs::TransformStamped odom_trans;
+          odom_trans.header.stamp = ros::Time::now();
+          odom_trans.header.frame_id = odom_frame_id;
+          odom_trans.child_frame_id = base_frame_id;
+          odom_trans.transform.translation.x = -robot_pose.x();
+          odom_trans.transform.translation.y = -robot_pose.y();
+          odom_trans.transform.translation.z = 0.0;
+          odom_trans.transform.rotation = tf::createQuaternionMsgFromYaw(robot_pose.yaw());
+          //send the transform
+          odom_broadcaster.sendTransform(odom_trans);
+      }
+
+      //next, we'll publish the odometry message over ROS
+      //-------------------------------------------------
+      //ROS_INFO("[rf2o] Publishing Odom Topic");
+      nav_msgs::Odometry odom;
+      odom.header.stamp = ros::Time::now();
+      odom.header.frame_id = odom_frame_id;
+      //set the position
+      odom.pose.pose.position.x = -robot_pose.x();
+      odom.pose.pose.position.y = -robot_pose.y();
+      odom.pose.pose.position.z = 0.0;
+      odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(robot_pose.yaw());
+      //set the velocity
+      odom.child_frame_id = base_frame_id;
+      odom.twist.twist.linear.x = lin_speed_x;    //linear speed
+      odom.twist.twist.linear.y = lin_speed_y;
+      odom.twist.twist.angular.z = ang_speed;   //angular speed
+      //publish the message
+
+      setOdomCovariances(odom);
+      odom_pub.publish(odom);
+    } else {
+      ROS_WARN("Singularity inferred (limits exceeded) in visual odometry; not updating pose");
+    }
 
     //filter speeds
     /*
@@ -1111,44 +1153,6 @@ void CLaserOdometry2D::PoseUpdate()
     double sum2 = std::accumulate(last_m_ang_speeds.begin(), last_m_ang_speeds.end(), 0.0);
     ang_speed = sum2 / last_m_ang_speeds.size();
     */
-
-    //first, we'll publish the odometry over tf
-    //---------------------------------------
-    if (publish_tf)
-    {
-        //ROS_INFO("[rf2o] Publishing TF: [base_link] to [odom]");
-        geometry_msgs::TransformStamped odom_trans;
-        odom_trans.header.stamp = ros::Time::now();
-        odom_trans.header.frame_id = odom_frame_id;
-        odom_trans.child_frame_id = base_frame_id;
-        odom_trans.transform.translation.x = -robot_pose.x();
-        odom_trans.transform.translation.y = -robot_pose.y();
-        odom_trans.transform.translation.z = 0.0;
-        odom_trans.transform.rotation = tf::createQuaternionMsgFromYaw(robot_pose.yaw());
-        //send the transform
-        odom_broadcaster.sendTransform(odom_trans);
-    }
-
-    //next, we'll publish the odometry message over ROS
-    //-------------------------------------------------
-    //ROS_INFO("[rf2o] Publishing Odom Topic");
-    nav_msgs::Odometry odom;
-    odom.header.stamp = ros::Time::now();
-    odom.header.frame_id = odom_frame_id;
-    //set the position
-    odom.pose.pose.position.x = -robot_pose.x();
-    odom.pose.pose.position.y = -robot_pose.y();
-    odom.pose.pose.position.z = 0.0;
-    odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(robot_pose.yaw());
-    //set the velocity
-    odom.child_frame_id = base_frame_id;
-    odom.twist.twist.linear.x = lin_speed_x;    //linear speed
-    odom.twist.twist.linear.y = lin_speed_y;
-    odom.twist.twist.angular.z = ang_speed;   //angular speed
-    //publish the message
-
-    setOdomCovariances(odom);
-    odom_pub.publish(odom);
 }
 
 void CLaserOdometry2D::setOdomCovariances(nav_msgs::Odometry& odom) {
