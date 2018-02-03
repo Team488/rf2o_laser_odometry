@@ -43,8 +43,8 @@ CLaserOdometry2D::CLaserOdometry2D()
     pn.param<bool>("verbose", verbose, true);
 
     pn.param<double>("angular_cov_mult", angular_cov_mult_, 10);
-    pn.param<double>("max_angular_speed_", max_angular_speed_, 1.0);
-    pn.param<double>("max_linear_speed_", max_linear_speed_, 1.0);
+    pn.param<double>("max_angular_speed", max_angular_speed_, 1.0);
+    pn.param<double>("max_linear_speed", max_linear_speed_, 1.0);
     pn.param<float>("min_info_density", min_info_density_, 0.5f);
 
     //Publishers and Subscribers
