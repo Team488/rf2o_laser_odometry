@@ -98,6 +98,9 @@ protected:
     void occHistCb(const maidbot_edge_detector::OccupancyHistogram::ConstPtr& msg);
     void setOdomCovariances(nav_msgs::Odometry& odom);
     maidbot_edge_detector::OccupancyHistogram occ_hist_;
+    std::vector<float> x_info_densities_;
+    std::vector<float> y_info_densities_;
+    int denisity_avg_window_;
 
     float min_info_density_;
 

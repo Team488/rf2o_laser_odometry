@@ -97,6 +97,15 @@ bool CLaserOdometry2D::scan_available()
 
 void CLaserOdometry2D::occHistCb(const maidbot_edge_detector::OccupancyHistogram::ConstPtr& msg) {
   occ_hist_ = *msg;
+  x_info_densities_.push_back(msg->information_density.x);
+  y_info_densities_.push_back(msg->information_density.y);
+  if(x_info_densities_.size() > denisity_avg_window_) {
+    x_info_densities_.erase(x_info_densities_.begin(), x_info_densities_.begin() + 1);
+  }
+
+  if(y_info_densities_.size() > denisity_avg_window_) {
+    y_info_densities_.erase(y_info_densities_.begin(), y_info_densities_.begin() + 1);
+  }
 }
 
 void CLaserOdometry2D::interpolateScanToFixedAngles(
@@ -1159,11 +1168,15 @@ void CLaserOdometry2D::setOdomCovariances(nav_msgs::Odometry& odom) {
   // xx
   float sigma_x = 0.01;
   float sigma_y = 0.01;
-  if(occ_hist_.information_density.x < min_info_density_) {
-    sigma_x = 0.05 * (1.0 / (occ_hist_.information_density.x + 0.1));
+  float density_x = std::accumulate(x_info_densities_.begin(), x_info_densities_.end(), 0.0f) / (float) denisity_avg_window_;
+  float density_y = std::accumulate(y_info_densities_.begin(), y_info_densities_.end(), 0.0f) / (float) denisity_avg_window_;
+
+  if(density_x < min_info_density_) {
+    sigma_x = 0.05 * (1.0 / (density_x + 0.1));
   }
-  if(occ_hist_.information_density.x < min_info_density_) {
-    sigma_y = 0.05 * (1.0 / (occ_hist_.information_density.y + 0.1));
+
+  if(density_x < min_info_density_) {
+    sigma_y = 0.05 * (1.0 / (density_y + 0.1));
   }
 
   odom.twist.covariance[0] = sigma_x * sigma_x;
