@@ -46,6 +46,7 @@ CLaserOdometry2D::CLaserOdometry2D()
     pn.param<double>("max_angular_speed", max_angular_speed_, 1.0);
     pn.param<double>("max_linear_speed", max_linear_speed_, 1.0);
     pn.param<float>("min_info_density", min_info_density_, 0.5f);
+    pn.param<int>("density_avg_window", density_avg_window_, 4);
 
     //Publishers and Subscribers
     //--------------------------
@@ -99,11 +100,11 @@ void CLaserOdometry2D::occHistCb(const maidbot_edge_detector::OccupancyHistogram
   occ_hist_ = *msg;
   x_info_densities_.push_back(msg->information_density.x);
   y_info_densities_.push_back(msg->information_density.y);
-  if(x_info_densities_.size() > denisity_avg_window_) {
+  if(x_info_densities_.size() > density_avg_window_) {
     x_info_densities_.erase(x_info_densities_.begin(), x_info_densities_.begin() + 1);
   }
 
-  if(y_info_densities_.size() > denisity_avg_window_) {
+  if(y_info_densities_.size() > density_avg_window_) {
     y_info_densities_.erase(y_info_densities_.begin(), y_info_densities_.begin() + 1);
   }
 }
@@ -1168,8 +1169,8 @@ void CLaserOdometry2D::setOdomCovariances(nav_msgs::Odometry& odom) {
   // xx
   float sigma_x = 0.01;
   float sigma_y = 0.01;
-  float density_x = std::accumulate(x_info_densities_.begin(), x_info_densities_.end(), 0.0f) / (float) denisity_avg_window_;
-  float density_y = std::accumulate(y_info_densities_.begin(), y_info_densities_.end(), 0.0f) / (float) denisity_avg_window_;
+  float density_x = std::accumulate(x_info_densities_.begin(), x_info_densities_.end(), 0.0f) / (float) density_avg_window_;
+  float density_y = std::accumulate(y_info_densities_.begin(), y_info_densities_.end(), 0.0f) / (float) density_avg_window_;
 
   if(density_x < min_info_density_) {
     sigma_x = 0.05 * (1.0 / (density_x + 0.1));
