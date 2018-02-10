@@ -23,7 +23,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/Twist.h>
 #include <angles/angles.h>
-#include <maidbot_edge_detector/OccupancyHistogram.h>
+#include <maidbot_obstacle_identification/OccupancyHistogram.h>
 
 // MRPT related headers
 #include <mrpt/version.h>
@@ -95,9 +95,9 @@ protected:
     void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& new_scan);
     void initPoseCallBack(const nav_msgs::Odometry::ConstPtr& new_initPose);
 
-    void occHistCb(const maidbot_edge_detector::OccupancyHistogram::ConstPtr& msg);
+    void occHistCb(const maidbot_obstacle_identification::OccupancyHistogram::ConstPtr& msg);
     void setOdomCovariances(nav_msgs::Odometry& odom);
-    maidbot_edge_detector::OccupancyHistogram occ_hist_;
+    maidbot_obstacle_identification::OccupancyHistogram occ_hist_;
     std::vector<float> x_info_densities_;
     std::vector<float> y_info_densities_;
     int density_avg_window_;
