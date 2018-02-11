@@ -51,7 +51,7 @@ ENDIF()
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES laser_odometry
- CATKIN_DEPENDS nav_msgs roscpp sensor_msgs std_msgs tf maidbot_edge_detector
+ CATKIN_DEPENDS nav_msgs roscpp sensor_msgs std_msgs tf maidbot_obstacle_identification
  #DEPENDS system_lib
 )
 
