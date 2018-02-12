@@ -103,6 +103,7 @@ protected:
     int density_avg_window_;
 
     float min_info_density_;
+    float max_linear_cov_;
 
     // Internal Data
 	std::vector<Eigen::MatrixXf> range;
