@@ -48,6 +48,7 @@ CLaserOdometry2D::CLaserOdometry2D()
     pn.param<float>("min_info_density", min_info_density_, 0.05f);
     pn.param<float>("max_linear_cov", max_linear_cov_, 0.05f);
     pn.param<int>("density_avg_window", density_avg_window_, 4);
+    pn.param<int>("odom_avg_window", odom_avg_window_, 4);
 
     //Publishers and Subscribers
     //--------------------------
@@ -1088,7 +1089,7 @@ void CLaserOdometry2D::PoseUpdate()
     // last_odom_time -> The time of the previous scan lasser used to estimate the pose
     //-------------------------------------------------------------------------------------
     double time_inc_sec = (last_scan.header.stamp - last_odom_time).toSec();
-    double lin_speed_x = acu_trans(0,2) / time_inc_sec;
+    double lin_speed_x = acu_trans(0, 2) / time_inc_sec;
     double lin_speed_y = acu_trans(1, 2) / time_inc_sec;
 
     double ang_inc = angles::shortest_angular_distance(
@@ -1110,6 +1111,24 @@ void CLaserOdometry2D::PoseUpdate()
       laser_oldpose = laser_pose;
       robot_oldpose = robot_pose;
       last_odom_time = last_scan.header.stamp;
+
+      last_m_x_speeds.push_back(lin_speed_x);
+      if (last_m_x_speeds.size()>4)
+          last_m_x_speeds.erase(last_m_x_speeds.begin());
+      double sum_x = std::accumulate(last_m_x_speeds.begin(), last_m_x_speeds.end(), 0.0);
+      lin_speed_x = sum_x / last_m_x_speeds.size();
+
+      last_m_y_speeds.push_back(lin_speed_y);
+      if (last_m_y_speeds.size()>4)
+          last_m_y_speeds.erase(last_m_y_speeds.begin());
+      double sum_y = std::accumulate(last_m_y_speeds.begin(), last_m_y_speeds.end(), 0.0);
+      lin_speed_y = sum_y / last_m_y_speeds.size();
+
+      last_m_th_speeds.push_back(ang_speed);
+      if (last_m_th_speeds.size()>4)
+          last_m_th_speeds.erase(last_m_th_speeds.begin());
+      double sum_th = std::accumulate(last_m_th_speeds.begin(), last_m_th_speeds.end(), 0.0);
+      ang_speed = sum_th / last_m_th_speeds.size();
 
       if (publish_tf)
       {
@@ -1151,19 +1170,6 @@ void CLaserOdometry2D::PoseUpdate()
     }
 
     //filter speeds
-    /*
-    last_m_lin_speeds.push_back(lin_speed);
-    if (last_m_lin_speeds.size()>4)
-        last_m_lin_speeds.erase(last_m_lin_speeds.begin());
-    double sum = std::accumulate(last_m_lin_speeds.begin(), last_m_lin_speeds.end(), 0.0);
-    lin_speed = sum / last_m_lin_speeds.size();
-
-    last_m_ang_speeds.push_back(ang_speed);
-    if (last_m_ang_speeds.size()>4)
-        last_m_ang_speeds.erase(last_m_ang_speeds.begin());
-    double sum2 = std::accumulate(last_m_ang_speeds.begin(), last_m_ang_speeds.end(), 0.0);
-    ang_speed = sum2 / last_m_ang_speeds.size();
-    */
 }
 
 void CLaserOdometry2D::setOdomCovariances(nav_msgs::Odometry& odom) {

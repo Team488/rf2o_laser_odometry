@@ -101,6 +101,7 @@ protected:
     std::vector<float> x_info_densities_;
     std::vector<float> y_info_densities_;
     int density_avg_window_;
+    int odom_avg_window_;
 
     float min_info_density_;
     float max_linear_cov_;
@@ -162,8 +163,9 @@ protected:
     mrpt::poses::CPose3D robot_pose;
     mrpt::poses::CPose3D robot_oldpose;
 	bool test;
-    std::vector<double> last_m_lin_speeds;
-    std::vector<double> last_m_ang_speeds;
+    std::vector<double> last_m_x_speeds;
+    std::vector<double> last_m_y_speeds;
+    std::vector<double> last_m_th_speeds;
 
 
 	// Methods
