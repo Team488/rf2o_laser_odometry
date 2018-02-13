@@ -89,7 +89,7 @@ protected:
 
     double max_angular_speed_;
     double max_linear_speed_;
-    double angular_cov_mult_;
+    double filter_lag_duration_;
 
     //CallBacks
     void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& new_scan);
@@ -105,6 +105,9 @@ protected:
 
     float min_info_density_;
     float max_linear_cov_;
+    float min_linear_cov_;
+    double angular_cov_mult_;
+    bool use_constant_cov_;
 
     // Internal Data
 	std::vector<Eigen::MatrixXf> range;

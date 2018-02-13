@@ -45,10 +45,13 @@ CLaserOdometry2D::CLaserOdometry2D()
     pn.param<double>("angular_cov_mult", angular_cov_mult_, 10);
     pn.param<double>("max_angular_speed", max_angular_speed_, 1.0);
     pn.param<double>("max_linear_speed", max_linear_speed_, 1.0);
+    pn.param<double>("filter_lag_duration", filter_lag_duration_, 0.0);
     pn.param<float>("min_info_density", min_info_density_, 0.05f);
     pn.param<float>("max_linear_cov", max_linear_cov_, 0.05f);
+    pn.param<float>("min_linear_cov", min_linear_cov_, 0.001f);
     pn.param<int>("density_avg_window", density_avg_window_, 4);
     pn.param<int>("odom_avg_window", odom_avg_window_, 4);
+    pn.param<bool>("use_constant_cov", use_constant_cov_, false);
 
     //Publishers and Subscribers
     //--------------------------
@@ -1149,7 +1152,7 @@ void CLaserOdometry2D::PoseUpdate()
       //-------------------------------------------------
       //ROS_INFO("[rf2o] Publishing Odom Topic");
       nav_msgs::Odometry odom;
-      odom.header.stamp = ros::Time::now();
+      odom.header.stamp = ros::Time::now() - ros::Duration(filter_lag_duration_);
       odom.header.frame_id = odom_frame_id;
       //set the position
       odom.pose.pose.position.x = -robot_pose.x();
@@ -1173,24 +1176,25 @@ void CLaserOdometry2D::PoseUpdate()
 }
 
 void CLaserOdometry2D::setOdomCovariances(nav_msgs::Odometry& odom) {
-  // xx
-  float cov_x = 0.0001;
-  float cov_y = 0.0001;
-  float density_x = std::accumulate(x_info_densities_.begin(), x_info_densities_.end(), 0.0f)
-    / (float) density_avg_window_;
-  float density_y = std::accumulate(y_info_densities_.begin(), y_info_densities_.end(), 0.0f)
-    / (float) density_avg_window_;
 
-  cov_x += max_linear_cov_ * (1.0 - tanh(density_x / min_info_density_));
-  cov_y += max_linear_cov_ * (1.0 - tanh(density_y / min_info_density_));
+  float cov_x = min_linear_cov_;
+  float cov_y = min_linear_cov_;
 
+  if(!use_constant_cov_) {
+    float density_x = std::accumulate(x_info_densities_.begin(), x_info_densities_.end(), 0.0f)
+      / (float) density_avg_window_;
+    float density_y = std::accumulate(y_info_densities_.begin(), y_info_densities_.end(), 0.0f)
+      / (float) density_avg_window_;
+
+    cov_x += max_linear_cov_ * (1.0 - tanh(density_x / min_info_density_));
+    cov_y += max_linear_cov_ * (1.0 - tanh(density_y / min_info_density_));
+  }
+  
   odom.twist.covariance[0] = cov_x;
-  odom.twist.covariance[1] = cov_x;
-  odom.twist.covariance[6] = cov_x;
   odom.twist.covariance[7] = cov_y;
-  odom.twist.covariance[14] = 1e-6;
-  odom.twist.covariance[21] = 1e-6;
-  odom.twist.covariance[28] = 1e-6;
+  odom.twist.covariance[13] = 1.0;
+  odom.twist.covariance[20] = 1.0;
+  odom.twist.covariance[27] = 1.0;
   // dubious, but not currently being used
   odom.twist.covariance[35] = std::min(cov_x, cov_y) * angular_cov_mult_;
 }
