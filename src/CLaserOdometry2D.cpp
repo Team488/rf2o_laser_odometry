@@ -1189,12 +1189,12 @@ void CLaserOdometry2D::setOdomCovariances(nav_msgs::Odometry& odom) {
     cov_x += max_linear_cov_ * (1.0 - tanh(density_x / min_info_density_));
     cov_y += max_linear_cov_ * (1.0 - tanh(density_y / min_info_density_));
   }
-  
+
   odom.twist.covariance[0] = cov_x;
   odom.twist.covariance[7] = cov_y;
-  odom.twist.covariance[13] = 1.0;
-  odom.twist.covariance[20] = 1.0;
-  odom.twist.covariance[27] = 1.0;
+  odom.twist.covariance[14] = 1.0;
+  odom.twist.covariance[21] = 1.0;
+  odom.twist.covariance[28] = 1.0;
   // dubious, but not currently being used
   odom.twist.covariance[35] = std::min(cov_x, cov_y) * angular_cov_mult_;
 }
