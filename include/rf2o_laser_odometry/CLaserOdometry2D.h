@@ -65,6 +65,8 @@ public:
     bool scan_available();
     void Init();
     void odometryCalculation();
+    void handleMissingData();
+    bool sensorHasTimedOut();
 
     std::string         laser_scan_topic;
     std::string         odom_topic;
@@ -90,6 +92,7 @@ protected:
     double max_angular_speed_;
     double max_linear_speed_;
     double filter_lag_duration_;
+    float  sensor_timeout_;
 
     //CallBacks
     void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& new_scan);

@@ -41,6 +41,7 @@ CLaserOdometry2D::CLaserOdometry2D()
     pn.param<std::string>("init_pose_from_topic", init_pose_from_topic, "/base_pose_ground_truth");
     pn.param<double>("freq",freq,10.0);
     pn.param<bool>("verbose", verbose, true);
+    pn.param<float>("sensor_timeout", sensor_timeout_, 0.2f);
 
     pn.param<double>("angular_cov_mult", angular_cov_mult_, 10);
     pn.param<double>("max_angular_speed", max_angular_speed_, 1.0);
@@ -1248,6 +1249,35 @@ void CLaserOdometry2D::initPoseCallBack(const nav_msgs::Odometry::ConstPtr& new_
     }
 }
 
+bool CLaserOdometry2D::sensorHasTimedOut() {
+  return (ros::Time::now() - last_scan.header.stamp).toSec() >= sensor_timeout_;
+}
+
+void CLaserOdometry2D::handleMissingData() {
+  // clear moving average buffers
+  last_m_x_speeds.clear();
+  last_m_th_speeds.clear();
+  last_m_y_speeds.clear();
+  // publish zero odom
+  //ROS_INFO("[rf2o] Publishing Odom Topic");
+  nav_msgs::Odometry odom;
+  odom.header.stamp = ros::Time::now() - ros::Duration(filter_lag_duration_);
+  odom.header.frame_id = odom_frame_id;
+  //set the position
+  odom.pose.pose.position.x = -robot_oldpose.x();
+  odom.pose.pose.position.y = -robot_oldpose.y();
+  odom.pose.pose.position.z = 0.0;
+  odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(robot_oldpose.yaw());
+  //set the velocity
+  odom.child_frame_id = base_frame_id;
+  odom.twist.twist.linear.x = 0.0;    //linear speed
+  odom.twist.twist.linear.y = 0.0;
+  odom.twist.twist.angular.z = 0.0;   //angular speed
+  //publish the message
+  setOdomCovariances(odom);
+  odom_pub.publish(odom);
+}
+
 //-----------------------------------------------------------------------------------
 //                                   MAIN
 //-----------------------------------------------------------------------------------
@@ -1272,6 +1302,9 @@ int main(int argc, char** argv)
         }
         else
         {
+          if( myLaserOdom.sensorHasTimedOut() ) {
+            myLaserOdom.handleMissingData();
+          }
             // ROS_WARN("[rf2o] Waiting for laser_scans.... odom init: %s, scan available : %s",
             //   myLaserOdom.is_initialized() ? "true" : "false",
             //   myLaserOdom.scan_available() ? "true" : "false") ;
