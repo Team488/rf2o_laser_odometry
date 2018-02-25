@@ -1170,7 +1170,7 @@ void CLaserOdometry2D::PoseUpdate()
       setOdomCovariances(odom);
       odom_pub.publish(odom);
     } else {
-      ROS_WARN("Singularity inferred (limits exceeded) in visual odometry; not updating pose");
+      ROS_DEBUG("Singularity inferred (limits exceeded) in visual odometry; not updating pose");
     }
 
     //filter speeds
