@@ -13,3 +13,8 @@ RF2O core is implemented within the **Mobile Robot Programming Toolkit** [MRPT](
 So far RF2O has been tested with the Ubuntu official repository version (MRPT v1.3), and we are working to update it to MRPT v.1.9
 
 MRPT links: http://wiki.ros.org/mrpt_navigation/Tutorials/Installing
+
+# Notes
+Updates to RF2O by Maidbot (https://maidbot.com/) - thank you!
+
+Sadly, we had to take out most of their custom code.
