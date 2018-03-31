@@ -57,11 +57,11 @@ CLaserOdometry2D::CLaserOdometry2D()
     //Publishers and Subscribers
     //--------------------------
     odom_pub = pn.advertise<nav_msgs::Odometry>(odom_topic, 5);
-    interp_scan_pub_ = pn.advertise<sensor_msgs::LaserScan>("/interpolated_scan", 2);
+    //interp_scan_pub_ = pn.advertise<sensor_msgs::LaserScan>("/interpolated_scan", 2);
     laser_sub = n.subscribe<sensor_msgs::LaserScan>(laser_scan_topic,1,&CLaserOdometry2D::LaserCallBack,this);
 
-    occ_hist_sub_ = n.subscribe<maidbot_obstacle_identification::OccupancyData>("/short_range_occupancy",
-      1, &CLaserOdometry2D::occHistCb, this);
+    // occ_hist_sub_ = n.subscribe<maidbot_obstacle_identification::OccupancyData>("/short_range_occupancy",
+    //   1, &CLaserOdometry2D::occHistCb, this);
 
     //init pose??
     if (init_pose_from_topic != "")
@@ -102,18 +102,18 @@ bool CLaserOdometry2D::scan_available()
     return new_scan_available;
 }
 
-void CLaserOdometry2D::occHistCb(const maidbot_obstacle_identification::OccupancyData::ConstPtr& msg) {
-  occ_hist_ = *msg;
-  x_info_densities_.push_back(msg->information_density.x);
-  y_info_densities_.push_back(msg->information_density.y);
-  if(x_info_densities_.size() > density_avg_window_) {
-    x_info_densities_.erase(x_info_densities_.begin(), x_info_densities_.begin() + 1);
-  }
+// void CLaserOdometry2D::occHistCb(const maidbot_obstacle_identification::OccupancyData::ConstPtr& msg) {
+//   occ_hist_ = *msg;
+//   x_info_densities_.push_back(msg->information_density.x);
+//   y_info_densities_.push_back(msg->information_density.y);
+//   if(x_info_densities_.size() > density_avg_window_) {
+//     x_info_densities_.erase(x_info_densities_.begin(), x_info_densities_.begin() + 1);
+//   }
 
-  if(y_info_densities_.size() > density_avg_window_) {
-    y_info_densities_.erase(y_info_densities_.begin(), y_info_densities_.begin() + 1);
-  }
-}
+//   if(y_info_densities_.size() > density_avg_window_) {
+//     y_info_densities_.erase(y_info_densities_.begin(), y_info_densities_.begin() + 1);
+//   }
+// }
 
 void CLaserOdometry2D::interpolateScanToFixedAngles(
     const sensor_msgs::LaserScan::ConstPtr& new_scan,

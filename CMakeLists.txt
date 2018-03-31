@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(rf2o_laser_odometry)
-set (CMAKE_CXX_STANDARD 14)  # Require C++14
+#set (CMAKE_CXX_STANDARD 14)  # Require C++14
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -13,7 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   angles
-  maidbot_obstacle_identification
 )
 
 ## System dependencies are found with CMake's conventions
@@ -51,7 +50,7 @@ ENDIF()
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES laser_odometry
- CATKIN_DEPENDS nav_msgs roscpp sensor_msgs std_msgs tf maidbot_obstacle_identification
+ CATKIN_DEPENDS nav_msgs roscpp sensor_msgs std_msgs tf
  #DEPENDS system_lib
 )
 
